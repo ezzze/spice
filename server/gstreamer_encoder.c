@@ -230,6 +230,14 @@ static int construct_pipeline(GstEncoder *encoder, const SpiceBitmap *bitmap)
                      "threads", 4,
                      NULL);
         break;
+    case SPICE_VIDEO_CODEC_TYPE_H264:
+        g_object_set(G_OBJECT(encoder->gstenc),
+                     "bitrate", encoder->bit_rate / 1024,
+                     "byte-stream", 1,
+                     "tune", 4, /* Zero latency */
+                     "threads", 4,
+                     NULL);
+        break;
     default:
         spice_warning("unknown encoder type %d", encoder->base.codec_type);
         reset_pipeline(encoder);
@@ -366,7 +374,8 @@ static int push_raw_frame(GstEncoder *encoder, const SpiceBitmap *bitmap,
     /* The GStreamer buffer timestamps and framerate are irrelevant and would
      * be hard to set right because they can arrive a bit irregularly
      */
-    if (encoder->base.codec_type == SPICE_VIDEO_CODEC_TYPE_VP8)
+    if (encoder->base.codec_type == SPICE_VIDEO_CODEC_TYPE_VP8 ||
+        encoder->base.codec_type == SPICE_VIDEO_CODEC_TYPE_H264)
     {
         /* FIXME: Maybe try drop-frame = 0 instead? */
         GST_BUFFER_TIMESTAMP(buffer) = frame_time;
@@ -528,6 +537,9 @@ GstEncoder *create_gstreamer_encoder(SpiceVideoCodecType codec_type, uint64_t st
         break;
     case SPICE_VIDEO_CODEC_TYPE_VP8:
         gstenc_name = "vp8enc";
+        break;
+    case SPICE_VIDEO_CODEC_TYPE_H264:
+        gstenc_name = "x264enc";
         break;
     default:
         spice_warning("unsupported codec type %d", codec_type);
